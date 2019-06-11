@@ -164,8 +164,8 @@ func shouldMutate(ignoredList []string, metadata *metav1.ObjectMeta) ([]string, 
 func createPatch(pod *corev1.Pod, sideCarNames []string, sideCars map[string]*SideCar, annotations map[string]string) ([]byte, error) {
 
 	var patch []patchOperation
-	var containers       []corev1.Container
-	var volumes          []corev1.Volume
+	var containers []corev1.Container
+	var volumes []corev1.Volume
 	var imagePullSecrets []corev1.LocalObjectReference
 	count := 0
 
@@ -308,5 +308,23 @@ func getEnvToInject(annotations map[string]string) []corev1.EnvVar {
 		}
 	}
 
+	// Inject vars from pod fields using the Downward API
+	env = append(env, envPodField("MY_POD_NAME", "metadata.name"))
+	env = append(env, envPodField("MY_POD_NAMESPACE", "metadata.namespace"))
+	env = append(env, envPodField("MY_NODE_NAME", "spec.nodeName"))
+	env = append(env, envPodField("MY_HOST_IP", "status.hostIP"))
+	env = append(env, envPodField("MY_POD_IP", "status.podIP"))
+
 	return env
+}
+
+func envPodField(name string, fieldPath string) corev1.EnvVar {
+	return corev1.EnvVar{
+		Name: name,
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: fieldPath,
+			},
+		},
+	}
 }
